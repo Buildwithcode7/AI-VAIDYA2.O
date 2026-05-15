@@ -14,12 +14,12 @@ from services.vector_store import VectorStoreService
 
 # ─── Ayurveda System Prompt ────────────────────────────────────────
 SYSTEM_PROMPT = """You are AI Vaidya, an expert Ayurvedic knowledge assistant. 
-You ONLY answer questions based on the provided context from Ayurvedic texts and documents.
+You ONLY answer questions based on the provided context from Ayurvedic texts, documents, and supplementary Web Search Results.
 
 Rules:
-1. ONLY use information from the provided context passages.
-2. If the context doesn't contain enough information, say: "The uploaded Ayurveda knowledge base does not contain enough information to answer this question."
-3. Always cite which document/page the information comes from.
+1. ONLY use information from the provided context passages and Web Search Results.
+2. If the context doesn't contain enough information, say: "The knowledge base and web search do not contain enough information to answer this question."
+3. Always cite which document/page or web source the information comes from.
 4. Use clear, structured, educational language.
 5. When mentioning herbs or treatments, include Sanskrit terms where applicable.
 6. NEVER fabricate information or use knowledge outside the provided context.
@@ -89,15 +89,21 @@ class RAGPipeline:
             document_ids=document_ids,
         )
 
-        if not retrieved:
-            return self._no_context_response(question, start_time)
-
         # Step 3: Compute confidence
         top_score = retrieved[0]["relevance_score"] if retrieved else 0.0
         confidence, confidence_level = self._compute_confidence(top_score, len(retrieved))
 
         # Step 4: Build context
-        context = self._build_context(retrieved)
+        context = self._build_context(retrieved) if retrieved else ""
+        
+        # Step 4.5: Web search augmentation
+        import asyncio
+        web_context = await asyncio.to_thread(self._search_web, question)
+        if web_context:
+            context += f"\n\n--- Web Search Results ---\n{web_context}"
+
+        if not context.strip():
+            return self._no_context_response(question, start_time)
 
         # Step 5: Generate answer
         answer = await self._generate_answer(question, context, chat_history or [])
@@ -181,7 +187,7 @@ Please answer based ONLY on the above context. If the information is not in the 
     def _fallback_answer(self, context: str, question: str) -> str:
         """Return structured context when no LLM is available"""
         if not context:
-            return "The uploaded Ayurveda knowledge base does not contain enough information to answer this question."
+            return "The uploaded Ayurveda knowledge base and web search do not contain enough information to answer this question."
         return (
             f"**Answer based on retrieved Ayurveda knowledge:**\n\n"
             f"The following relevant passages were found:\n\n{context[:1500]}\n\n"
@@ -192,7 +198,7 @@ Please answer based ONLY on the above context. If the information is not in the 
         elapsed_ms = int((time.time() - start_time) * 1000)
         return {
             "question": question,
-            "answer": "The uploaded Ayurveda knowledge base does not contain enough information to answer this question. Please upload relevant Ayurveda documents first.",
+            "answer": "The knowledge base and web search do not contain enough information to answer this question. Please upload relevant documents or rephrase.",
             "confidence": "low",
             "confidence_score": 0.0,
             "sources": [],
@@ -218,6 +224,23 @@ Please answer based ONLY on the above context. If the information is not in the 
         concepts = [c for c in AYURVEDA_RELATED_CONCEPTS["concept"] if c in text_lower]
         concepts += [c for c in AYURVEDA_RELATED_CONCEPTS["dosha"] if c in text_lower]
         return {"herbs": list(set(herbs)), "concepts": list(set(concepts))}
+
+    def _search_web(self, query: str) -> str:
+        """Perform a web search using duckduckgo to augment the context"""
+        try:
+            from duckduckgo_search import DDGS
+            with DDGS() as ddgs:
+                # Get top 3 search results
+                results = list(ddgs.text(query, max_results=3))
+                if not results:
+                    return ""
+                context = ""
+                for i, r in enumerate(results, 1):
+                    context += f"[Web Source {i}: {r.get('title')}]\n{r.get('body')}\n"
+                return context
+        except Exception as e:
+            logger.error(f"Web search error: {e}")
+            return ""
 
     def build_knowledge_graph(self, document_id: Optional[str] = None) -> Dict:
         """Build a simple knowledge graph from stored chunks"""

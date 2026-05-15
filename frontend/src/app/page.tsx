@@ -119,9 +119,9 @@ export default function LandingPage() {
               <MessageCircle size={18} />
               Start Asking Questions
             </Link>
-            <Link href="/upload" className="btn-secondary" style={{ fontSize: "1rem", padding: "14px 32px" }}>
+            <Link href="/analyze" className="btn-secondary" style={{ fontSize: "1rem", padding: "14px 32px", borderColor: "var(--teal-500)", color: "var(--teal-300)" }}>
               <Upload size={18} />
-              Upload Documents
+              Picture Analyse
             </Link>
           </motion.div>
 

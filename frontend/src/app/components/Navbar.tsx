@@ -15,6 +15,7 @@ const navItems = [
   { href: "/upload", label: "Upload", icon: Upload },
   { href: "/knowledge", label: "Knowledge Base", icon: Database },
   { href: "/search", label: "Search", icon: Search },
+  { href: "/analyze", label: "Picture Analyse", icon: Activity },
   { href: "/about", label: "About", icon: Info },
 ];
 

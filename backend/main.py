@@ -12,7 +12,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 
 from utils.config import settings
-from routers import upload, query
+from routers import upload, query, analyze
 
 
 # ─── Startup / Shutdown ────────────────────────────────────────────
@@ -23,9 +23,11 @@ async def lifespan(app: FastAPI):
     try:
         from services.embeddings import EmbeddingService
         from services.vector_store import VectorStoreService
+        from services.picture_analyses import PictureAnalysesService
         emb = EmbeddingService()
         vs = VectorStoreService()
-        logger.success("✅ Embedding model and vector store ready")
+        pic_analyzer = PictureAnalysesService()
+        logger.success("✅ Embedding model, vector store, and picture analyses model ready")
     except Exception as e:
         logger.error(f"Startup warning: {e}")
     yield
@@ -54,6 +56,7 @@ app.add_middleware(
 # ─── Routers ──────────────────────────────────────────────────────
 app.include_router(upload.router, prefix="/api/v1")
 app.include_router(query.router, prefix="/api/v1")
+app.include_router(analyze.router, prefix="/api/v1")
 
 
 # ─── Health Check ─────────────────────────────────────────────────

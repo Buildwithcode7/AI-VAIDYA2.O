@@ -212,9 +212,25 @@ class DocumentProcessor:
             import pytesseract
             from PIL import Image
             img = Image.open(file_path)
+            
+            # OCR Text
             text = pytesseract.image_to_string(img)
+            
+            # Picture Analyses
+            from services.picture_analyses import PictureAnalysesService
+            analyzer = PictureAnalysesService()
+            caption = analyzer.analyze_picture(file_path)
+            
+            combined_text = ""
+            if caption:
+                combined_text += f"[Image Description: {caption}]\n"
             if text.strip():
-                return [{"page_number": 1, "text": self._clean_text(text)}]
+                combined_text += f"[Extracted Text]\n{text.strip()}"
+                
+            combined_text = self._clean_text(combined_text)
+            
+            if combined_text:
+                return [{"page_number": 1, "text": combined_text}]
             return []
         except Exception as e:
             logger.error(f"Image extraction error: {e}")
