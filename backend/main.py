@@ -19,19 +19,31 @@ from routers import upload, query, analyze
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("🌿 AI Vaidya starting up...")
-    # Pre-warm embedding model and vector store
     try:
         from services.embeddings import EmbeddingService
         from services.vector_store import VectorStoreService
-        from services.picture_analyses import PictureAnalysesService
+
         emb = EmbeddingService()
         vs = VectorStoreService()
-        pic_analyzer = PictureAnalysesService()
-        logger.success("✅ Embedding model, vector store, and picture analyses model ready")
+
+        logger.success("✅ Embedding model and vector store ready")
+
     except Exception as e:
         logger.error(f"Startup warning: {e}")
-    yield
-    logger.info("🌿 AI Vaidya shutting down...")
+    # Pre-warm embedding model and vector store
+    # try:
+    #     from services.embeddings import EmbeddingService
+    #     from services.vector_store import VectorStoreService
+    #     from services.picture_analyses import PictureAnalysesService
+    #     emb = EmbeddingService()
+    #     vs = VectorStoreService()
+    #     pic_analyzer = PictureAnalysesService()
+    #     logger.success("✅ Embedding model, vector store, and picture analyses model ready")
+    # except Exception as e:
+    #     logger.error(f"Startup warning: {e}")
+    # yield
+    # logger.info("🌿 AI Vaidya shutting down...")
+
 
 
 # ─── App Instance ──────────────────────────────────────────────────
