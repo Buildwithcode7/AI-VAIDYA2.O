@@ -13,3 +13,8 @@ dist/
 
 # OS
 .DS_Store
+
+backend/data/uploads/
+backend/chroma_db/
+*.sqlite3
+*.bin
