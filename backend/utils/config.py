@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     llm_model: str = "llama3-70b-8192"
 
     # --- Embeddings ---
+    embedding_backend: str = "hash"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
 
     # --- ChromaDB ---

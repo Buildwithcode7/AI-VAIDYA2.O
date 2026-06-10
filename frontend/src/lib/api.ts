@@ -4,7 +4,7 @@
  */
 import axios from "axios";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 export const api = axios.create({
   baseURL: API_BASE,
@@ -77,6 +77,17 @@ export const queryAPI = {
     }),
 
   getSuggestions: () => api.get("/query/suggest"),
+};
+
+// Picture analysis API
+export const analyzeAPI = {
+  picture: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return api.post("/analyze/picture", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
 };
 
 // ─── Health API ──────────────────────────────────────────────────

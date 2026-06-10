@@ -17,9 +17,11 @@ services:
       - LLM_PROVIDER=groq
       - LLM_MODEL=llama3-70b-8192
       - EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+      - EMBEDDING_BACKEND=hash
       - CHROMA_PERSIST_DIR=/app/chroma_db
       - UPLOAD_DIR=/app/data/uploads
       - ALLOWED_ORIGINS=http://localhost:3000
+      - PORT=8000
     restart: unless-stopped
     networks:
       - vaidya-net
@@ -28,11 +30,15 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: /api/v1
+        BACKEND_URL: http://backend:8000/api/v1
     container_name: ai-vaidya-frontend
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8000/api/v1
+      - NEXT_PUBLIC_API_URL=/api/v1
+      - BACKEND_URL=http://backend:8000/api/v1
     depends_on:
       - backend
     restart: unless-stopped

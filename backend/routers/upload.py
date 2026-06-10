@@ -9,6 +9,7 @@ import asyncio
 from pathlib import Path
 from datetime import datetime
 from typing import List, Optional
+from functools import lru_cache
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Query
 from fastapi.responses import JSONResponse
@@ -22,8 +23,12 @@ from models.schemas import (
 from services.document_processor import DocumentProcessor
 
 router = APIRouter(prefix="/upload", tags=["Upload"])
-processor = DocumentProcessor()
 ALLOWED_EXTENSIONS = {".pdf", ".txt", ".docx", ".doc", ".png", ".jpg", ".jpeg"}
+
+
+@lru_cache(maxsize=1)
+def get_processor() -> DocumentProcessor:
+    return DocumentProcessor()
 
 @router.post("/", response_model=DocumentUploadResponse)
 async def upload_document(
@@ -60,6 +65,7 @@ async def upload_document(
     logger.info(f"File saved: {file.filename} ({file_size_mb:.2f} MB) → {file_path}")
 
     # Queue background processing
+    processor = get_processor()
     background_tasks.add_task(
         processor.process_document,
         file_path=file_path,
@@ -80,6 +86,7 @@ async def upload_document(
 @router.get("/status/{document_id}", response_model=DocumentProcessingStatus)
 async def get_processing_status(document_id: str):
     """Get processing status for a document"""
+    processor = get_processor()
     status = processor.get_status(document_id)
     if status is None:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -89,6 +96,7 @@ async def get_processing_status(document_id: str):
 @router.get("/documents", response_model=DocumentListResponse)
 async def list_documents():
     """List all uploaded and processed documents"""
+    processor = get_processor()
     docs = processor.get_all_documents()
     total_chunks = sum(d.get("total_chunks", 0) for d in docs)
     return DocumentListResponse(
@@ -101,6 +109,7 @@ async def list_documents():
 @router.get("/documents/{document_id}", response_model=DocumentMetadata)
 async def get_document(document_id: str):
     """Get metadata for a specific document"""
+    processor = get_processor()
     doc = processor.get_document(document_id)
     if doc is None:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -110,6 +119,7 @@ async def get_document(document_id: str):
 @router.delete("/documents/{document_id}")
 async def delete_document(document_id: str):
     """Delete a document and its vector embeddings"""
+    processor = get_processor()
     doc = processor.get_document(document_id)
     if doc is None:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -124,4 +134,4 @@ async def delete_document(document_id: str):
 @router.get("/analytics")
 async def get_analytics():
     """Get analytics across all documents"""
-    return processor.get_analytics()
+    return get_processor().get_analytics()

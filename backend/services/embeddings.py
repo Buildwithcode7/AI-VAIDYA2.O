@@ -3,9 +3,10 @@ Embedding Service using sentence-transformers
 Handles text embedding generation for RAG pipeline
 """
 import numpy as np
+import hashlib
+import re
 from typing import List, Optional
 from loguru import logger
-from functools import lru_cache
 
 from utils.config import settings
 
@@ -20,7 +21,10 @@ class EmbeddingService:
         return cls._instance
 
     def __init__(self):
-        if self._model is None:
+        if settings.embedding_backend.lower() == "hash":
+            self._model = "hash"
+            logger.info("Using low-memory hash embeddings.")
+        elif self._model is None:
             self._load_model()
 
     def _load_model(self):
@@ -38,6 +42,8 @@ class EmbeddingService:
         """Generate embeddings for a list of texts"""
         if not texts:
             return []
+        if self._model == "hash":
+            return [self._hash_embed(text) for text in texts]
         if self._model is None:
             raise RuntimeError("Embedding model not loaded")
         try:
@@ -65,3 +71,19 @@ class EmbeddingService:
 
     def is_ready(self) -> bool:
         return self._model is not None
+
+    def _hash_embed(self, text: str) -> List[float]:
+        vector = np.zeros(384, dtype=np.float32)
+        tokens = re.findall(r"[a-zA-Z0-9]+", text.lower())
+
+        for token in tokens:
+            digest = hashlib.blake2b(token.encode("utf-8"), digest_size=8).digest()
+            index = int.from_bytes(digest[:4], "little") % vector.size
+            sign = 1.0 if digest[4] % 2 == 0 else -1.0
+            vector[index] += sign
+
+        norm = np.linalg.norm(vector)
+        if norm > 0:
+            vector /= norm
+
+        return vector.tolist()

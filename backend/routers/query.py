@@ -4,6 +4,7 @@ Handles Q&A, semantic search, and knowledge graph requests
 """
 import time
 from typing import Optional, List
+from functools import lru_cache
 
 from fastapi import APIRouter, HTTPException, Query
 from loguru import logger
@@ -17,8 +18,16 @@ from services.rag_pipeline import RAGPipeline
 from services.embeddings import EmbeddingService
 
 router = APIRouter(prefix="/query", tags=["Query"])
-rag = RAGPipeline()
-embedder = EmbeddingService()
+
+
+@lru_cache(maxsize=1)
+def get_rag() -> RAGPipeline:
+    return RAGPipeline()
+
+
+@lru_cache(maxsize=1)
+def get_embedder() -> EmbeddingService:
+    return EmbeddingService()
 
 
 @router.post("/ask", response_model=QueryResponse)
@@ -30,6 +39,7 @@ async def ask_question(request: QueryRequest):
     logger.info(f"Query received: {request.question[:80]}...")
 
     try:
+        rag = get_rag()
         result = await rag.query(
             question=request.question,
             top_k=request.top_k,
@@ -73,6 +83,7 @@ async def semantic_search(request: SearchRequest):
     """Semantic search across the knowledge base"""
     start = time.time()
     try:
+        embedder = get_embedder()
         query_embedding = embedder.embed_query(request.query)
         from services.vector_store import VectorStoreService
         vs = VectorStoreService()
@@ -110,7 +121,7 @@ async def semantic_search(request: SearchRequest):
 async def get_knowledge_graph(document_id: Optional[str] = Query(None)):
     """Get Ayurveda knowledge graph nodes and edges"""
     try:
-        graph = rag.build_knowledge_graph(document_id=document_id)
+        graph = get_rag().build_knowledge_graph(document_id=document_id)
         nodes = [GraphNode(**n) for n in graph["nodes"]]
         edges = [GraphEdge(**e) for e in graph["edges"]]
         return KnowledgeGraphResponse(nodes=nodes, edges=edges, document_id=document_id)

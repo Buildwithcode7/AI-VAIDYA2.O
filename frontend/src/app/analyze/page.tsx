@@ -3,6 +3,7 @@ import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { Upload, ImageIcon, Loader2, Leaf, AlertCircle } from "lucide-react";
 import Navbar from "../components/Navbar";
+import { analyzeAPI } from "../../lib/api";
 
 export default function PictureAnalysePage() {
   const [file, setFile] = useState<File | null>(null);
@@ -27,24 +28,11 @@ export default function PictureAnalysePage() {
     setLoading(true);
     setError(null);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("http://localhost:8000/api/v1/analyze/picture", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => null);
-        throw new Error(errData?.detail || "Analysis failed");
-      }
-      
-      const data = await res.json();
+      const { data } = await analyzeAPI.picture(file);
       setResult(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || "Failed to analyze picture.");
+      setError(err instanceof Error ? err.message : "Failed to analyze picture.");
     } finally {
       setLoading(false);
     }
@@ -149,7 +137,7 @@ export default function PictureAnalysePage() {
               >
                 <div style={{ background: "rgba(0,0,0,0.3)", padding: 20, borderRadius: 12, marginBottom: 20, border: "1px solid rgba(255,255,255,0.05)" }}>
                   <div style={{ fontWeight: 600, marginBottom: 8, color: "var(--teal-300)" }}>Vision Model Output</div>
-                  <div style={{ color: "var(--text-secondary)", fontSize: "1.05rem" }}>"{result.caption}"</div>
+                  <div style={{ color: "var(--text-secondary)", fontSize: "1.05rem" }}>&quot;{result.caption}&quot;</div>
                 </div>
                 
                 {result.details && (

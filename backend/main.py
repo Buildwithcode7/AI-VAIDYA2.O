@@ -8,7 +8,6 @@ from loguru import logger
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 
 from utils.config import settings
@@ -19,17 +18,7 @@ from routers import upload, query, analyze
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("🌿 AI Vaidya starting up...")
-    # Pre-warm embedding model and vector store
-    try:
-        from services.embeddings import EmbeddingService
-        from services.vector_store import VectorStoreService
-        from services.picture_analyses import PictureAnalysesService
-        emb = EmbeddingService()
-        vs = VectorStoreService()
-        pic_analyzer = PictureAnalysesService()
-        logger.success("✅ Embedding model, vector store, and picture analyses model ready")
-    except Exception as e:
-        logger.error(f"Startup warning: {e}")
+    logger.info("Heavy AI models will load lazily on first use.")
     yield
     logger.info("🌿 AI Vaidya shutting down...")
 
@@ -47,7 +36,7 @@ app = FastAPI(
 # ─── CORS ─────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins_list + ["*"],
+    allow_origins=settings.allowed_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -67,29 +56,16 @@ async def root():
 
 @app.get("/api/v1/health", tags=["Health"])
 async def health_check():
-    from services.embeddings import EmbeddingService
-    from services.vector_store import VectorStoreService
-    from services.document_processor import documents_metadata
-
-    try:
-        emb = EmbeddingService()
-        vs = VectorStoreService()
-        stats = vs.get_collection_stats()
-        return {
-            "status": "healthy",
-            "version": settings.app_version,
-            "vector_db_status": stats["status"],
-            "llm_provider": settings.llm_provider,
-            "total_documents": len(documents_metadata),
-            "total_chunks": stats["total_chunks"],
-            "embedding_model": settings.embedding_model,
-            "has_llm_api": settings.has_llm,
-        }
-    except Exception as e:
-        return JSONResponse(
-            status_code=503,
-            content={"status": "unhealthy", "error": str(e)}
-        )
+    return {
+        "status": "healthy",
+        "version": settings.app_version,
+        "vector_db_status": "lazy",
+        "llm_provider": settings.llm_provider,
+        "total_documents": 0,
+        "total_chunks": 0,
+        "embedding_model": settings.embedding_model,
+        "has_llm_api": settings.has_llm,
+    }
 
 
 @app.exception_handler(Exception)
