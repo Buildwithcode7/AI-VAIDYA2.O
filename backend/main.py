@@ -36,10 +36,7 @@ app = FastAPI(
 # ─── CORS ─────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://ai-vaidya-2-o-git-clean-fix-reranker-buildwithcode7s-projects.vercel.app",
-    ],
+    allow_origins=settings.allowed_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
