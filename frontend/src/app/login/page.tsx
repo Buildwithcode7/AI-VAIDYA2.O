@@ -39,7 +39,7 @@ export default function LoginPage() {
       y: 0, 
       transition: { 
         duration: 0.6, 
-        ease: "easeOut",
+        ease: "linear",
         staggerChildren: 0.1 
       } 
     },
